@@ -100,7 +100,7 @@ print "Writing $jpgFilename\n";
 gfx print window 1 jpg file "$jpgFilename" height 1000 width 2000
 	 
 #Read in the sequence of nodal positions.
-for($i=0; $i < 2; $i=$i+1)
+for($i=0; $i < 100; $i=$i+1)
   {
 	 $fluidFilename = sprintf("./output/Fluid/Fluid%d.part0.exnode", $i);
 	 $solidFilename = sprintf("./output/Solid/Solid%d.part0.exnode", $i);
