@@ -2,7 +2,7 @@
 #> Finite Elasticity-ALE NavierStokes equation using OpenCMISS
 #> calls.
 #>
-#> By Chris Bradley
+#> By Chris Bradley, Andreas Hessenthaler, Soroush Safaei
 #>
 
 #================================================================================================================================
@@ -51,8 +51,9 @@ setupOutput = True
 progressDiagnostics = True
 debugLevel = 3
 
+# Temporal information
 startTime = 0.0
-stopTime  = 15.0
+stopTime  = 10.0
 timeStep  = 0.1
 
 # Inlet velocity parameters
@@ -297,6 +298,16 @@ def SetNodeParameters1D(nodeNumber,field,xPosition,yPosition,xTangent,yTangent):
 # Import the libraries (OpenCMISS,python,numpy,scipy)
 import numpy,csv,time,sys,os,pdb
 from opencmiss.iron import iron
+
+# Ensure output directories exist
+if not os.path.exists('./output'):
+    os.makedirs('./output')
+if not os.path.exists('./output/Fluid'):
+    os.makedirs('./output/Fluid')
+if not os.path.exists('./output/Solid'):
+    os.makedirs('./output/Solid')
+if not os.path.exists('./output/Interface'):
+    os.makedirs('./output/Interface')
 
 # Diagnostics
 #iron.DiagnosticsSetOn(iron.DiagnosticTypes.ALL,[1,2,3,4,5],"Diagnostics",[""])
@@ -828,14 +839,14 @@ if (problemType == FSI):
                              numberOfFluidX1Nodes + offset
         if (uInterpolation == QUADRATIC):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
-            localSolidNodes[1] = localSolidNodes[0] - numberOfSolidXNodes - 2
+            localSolidNodes[1] = localSolidNodes[0] - numberOfSolidXNodes 
             localFluidNodes[1] = localFluidNodes[0] - numberOfFluidXNodes2 - offset + 1
         elif (uInterpolation == CUBIC):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
-            localSolidNodes[1] = localSolidNodes[0] - numberOfSolidXNodes - 2
+            localSolidNodes[1] = localSolidNodes[0] - numberOfSolidXNodes 
             localFluidNodes[1] = localFluidNodes[0] - numberOfFluidXNodes2 - offset + 1
             localInterfaceNodes[2] = localInterfaceNodes[1]+1
-            localSolidNodes[2] = localSolidNodes[1] - numberOfSolidXNodes - 2
+            localSolidNodes[2] = localSolidNodes[1] - numberOfSolidXNodes 
             localFluidNodes[2] = localFluidNodes[1] - numberOfFluidXNodes2 - offset + 1
         localInterfaceNodes[numberOfNodesXi-1] = localInterfaceNodes[0] + numberOfNodesXi - 1
         localSolidNodes[numberOfNodesXi-1] = localSolidNodes[0] - (numberOfNodesXi-1)*numberOfSolidXNodes
