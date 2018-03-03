@@ -1183,7 +1183,7 @@ if (problemType != FLUID):
     solidDependentField.ParameterSetUpdateStart(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
     solidDependentField.ParameterSetUpdateFinish(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
 
-if (problemType != FLUID):
+if (problemType != SOLID):
     # Create the equations set dependent field variables for dynamic Navier-Stokes
     fluidDependentField = iron.Field()
     fluidEquationsSet.DependentCreateStart(fluidDependentFieldUserNumber,fluidDependentField)
