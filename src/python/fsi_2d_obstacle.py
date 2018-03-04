@@ -2,18 +2,16 @@
 #> Finite Elasticity-ALE NavierStokes equation using OpenCMISS
 #> calls.
 #>
-#> By Chris Bradley, Andreas Hessenthaler, Soroush Safaei
+#> By Chris Bradley, Andreas Hessenthaler, Soroush Safaei, Zohreh Ekhlasi
 #>
 
 #================================================================================================================================
-#  Start Program
+#  Symbol Definitions
 #================================================================================================================================
 
 FLUID = 1
 SOLID = 2
 FSI = 3
-
-problemType = FSI
 
 LINEAR_LAGRANGE = 1
 QUADRATIC_LAGRANGE = 2
@@ -28,16 +26,22 @@ VELOCITY = 2
 PRESSURE = 3
 REFPRESSURE = 4
 
-numberOfSolidXElements = 1
-numberOfSolidYElements = 2
-numberOfFluidX1Elements = 2
-numberOfFluidX2Elements = 2
-numberOfFluidYElements = 1
+#================================================================================================================================
+#  User changeable example parameters
+#================================================================================================================================
+
+problemType = FSI
 
 width = 3.0
 height = 1.5
 
-uInterpolation = CUBIC_SIMPLEX
+numberOfSolidXElements = 2
+numberOfSolidYElements = 3
+numberOfFluidX1Elements = 3
+numberOfFluidX2Elements = 3
+numberOfFluidYElements = 2
+
+uInterpolation = QUADRATIC_SIMPLEX
 pInterpolation = LINEAR_SIMPLEX
 
 #RBS = False
@@ -153,8 +157,8 @@ numberOfFluidX2Nodes = numberOfFluidX2Elements*(numberOfNodesXi-1)+1
 numberOfFluidXNodes1 = numberOfFluidX1Nodes+numberOfFluidX2Nodes+numberOfSolidXNodes-2
 numberOfFluidXNodes2 = numberOfFluidX1Nodes+numberOfFluidX2Nodes
 numberOfFluidYNodes = numberOfFluidYElements*(numberOfNodesXi-1)+1
-numberOfFluidNodes = (numberOfFluidX1Elements*numberOfNodesXi)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
-                    (numberOfFluidX2Elements*numberOfNodesXi)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
+numberOfFluidNodes = (numberOfFluidX1Elements*(numberOfNodesXi-1)+1)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
+                    (numberOfFluidX2Elements*(numberOfNodesXi-1)+1)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
                     ((numberOfFluidX1Elements+numberOfFluidX2Elements+numberOfSolidXElements)*(numberOfNodesXi-1)+1)* \
                     (numberOfFluidYElements*(numberOfNodesXi-1)+1)
 numberOfInterfaceNodes = (numberOfSolidXElements*(numberOfNodesXi-1)+1)+2*numberOfSolidYElements*(numberOfNodesXi-1)
@@ -868,8 +872,8 @@ if (problemType == FSI):
         interfaceElementNumber = interfaceElementNumber + 1
         if (debugLevel > 2):
             print('  Interface Element %8d:' % (interfaceElementNumber))        
-        solidElementNumber = (interfaceElementIdx - 1)*numberOfSolidXElements + 1
-        fluidElementNumber = (numberOfSubElements-1) + numberOfFluidX1Elements+(interfaceElementIdx - 1)*numberOfFluidXElements2
+        solidElementNumber = (interfaceElementIdx - 1)*numberOfSolidXElements*numberOfSubElements + 1
+        fluidElementNumber = numberOfFluidX1Elements*numberOfSubElements+(interfaceElementIdx - 1)*numberOfFluidXElements2
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
@@ -896,8 +900,8 @@ if (problemType == FSI):
         for localNodeIdx in range(0,numberOfNodesXi):
             xi=float(localNodeIdx)/float(numberOfNodesXi-1)
             if (simplex):
-                solidXi = [1.0-xi,xi]
-                fluidXi = [xi,1.0-xi]
+                solidXi = [xi,1.0]
+                fluidXi = [1.0,xi]
             else:
                 solidXi = [0.0,xi]
                 fluidXi = [1.0,xi]
@@ -916,8 +920,9 @@ if (problemType == FSI):
         interfaceElementNumber = interfaceElementNumber + 1
         if (debugLevel > 2):
             print('  Interface Element %8d:' % (interfaceElementNumber))        
-        solidElementNumber = interfaceElementIdx + numberOfSolidXElements*(numberOfSolidYElements-1)
-        fluidElementNumber = (numberOfSubElements-1)+interfaceElementIdx + numberOfFluidX1Elements + numberOfFluidXElements2*numberOfSolidYElements
+        solidElementNumber = 1+(interfaceElementIdx-1)*numberOfSubElements + numberOfSolidXElements*numberOfSubElements*(numberOfSolidYElements-1)
+        fluidElementNumber = numberOfSubElements + (interfaceElementIdx-1)*numberOfSubElements + \
+                             (numberOfFluidX1Elements*numberOfSubElements + numberOfFluidXElements2*numberOfSolidYElements)
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
@@ -944,8 +949,8 @@ if (problemType == FSI):
         for localNodeIdx in range(0,numberOfNodesXi):
             xi=float(localNodeIdx)/float(numberOfNodesXi-1)
             if (simplex):
-                solidXi = [xi,1.0]
-                fluidXi = [1.0-xi,1.0]
+                solidXi = [1.0,1.0-xi]
+                fluidXi = [xi,1.0-xi]
             else:
                 solidXi = [xi,1.0]
                 fluidXi = [xi,0.0]
@@ -968,8 +973,9 @@ if (problemType == FSI):
         interfaceElementNumber = interfaceElementNumber + 1
         if (debugLevel > 2):
             print('  Interface Element %8d:' % (interfaceElementNumber))
-        solidElementNumber = (numberOfSubElements-1) + (numberOfSolidYElements - interfaceElementIdx + 1)*numberOfSolidXElements 
-        fluidElementNumber = (numberOfSolidYElements - interfaceElementIdx)*numberOfFluidXElements2 + numberOfFluidX1Elements + 1
+        solidElementNumber = (numberOfSolidYElements - interfaceElementIdx + 1)*numberOfSolidXElements*numberOfSubElements
+        fluidElementNumber = (numberOfSolidYElements - interfaceElementIdx)*numberOfFluidXElements2 + \
+                             numberOfFluidX1Elements*numberOfSubElements + 1
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
@@ -999,8 +1005,8 @@ if (problemType == FSI):
         for localNodeIdx in range(0,numberOfNodesXi):
             xi=float(numberOfNodesXi-localNodeIdx-1)/float(numberOfNodesXi-1)
             if (simplex):
-                solidXi = [xi,1.0-xi]
-                fluidXi = [1.0-xi,xi]
+                solidXi = [1.0,xi]
+                fluidXi = [xi,1.0]
             else:
                 solidXi = [1.0,xi]
                 fluidXi = [0.0,xi]
@@ -2032,7 +2038,8 @@ if (problemType != SOLID):
                 print('         Pressure         =   %.2f' % (fluidPRef))                 
         if RBS:
             # Set the element normals for outlet stabilisation
-            elementNumber = numberOfFluidX1Elements+numberOfFluidX2Elements+(yElementIdx-2)*(numberOfFluidX1Elements+numberOfFluidX2Elements)
+            elementNumber = (numberOfFluidX1Elements+numberOfFluidX2Elements)*numberOfSubElements+\
+                            (yElementIdx-2)*(numberOfFluidX1Elements+numberOfFluidX2Elements)*numberOfSubElements
             elementDomain = fluidDecomposition.ElementDomainGet(elementNumber)
             if (elementDomain == computationalNodeNumber):
                 # Set the outflow normal to (0,0,+1)
@@ -2651,7 +2658,7 @@ if (progressDiagnostics):
 #  Run Solvers
 #================================================================================================================================
 
-#quit()
+quit()
 
 # Solve the problem
 print('Solving problem...')
