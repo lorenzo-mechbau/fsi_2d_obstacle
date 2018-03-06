@@ -17,11 +17,11 @@ gfx define field FluidRegion/FluidVelocityMagnitude magnitude field FluidVelocit
 #Create all the spectrums
 gfx create spectrum FluidFlow
 gfx modify spectrum FluidFlow clear overwrite_colour
-gfx modify spectrum FluidFlow linear reverse range 0.0 0.90 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum FluidFlow linear reverse range 0.0 1.50 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum FluidPressure
 gfx modify spectrum FluidPressure clear overwrite_colour
-gfx modify spectrum FluidPressure linear reverse range -15.0 21.0 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum FluidPressure linear reverse range 0.0 90.0 extend_above extend_below rainbow colour_range 0 1
 
 #Display lines
 gfx modify g_element FluidRegion lines coordinate FluidGeometry 

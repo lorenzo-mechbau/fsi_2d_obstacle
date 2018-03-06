@@ -40,15 +40,15 @@ gfx create material TransparentSolid normal_mode ambient 0.3 0.3 0.3 diffuse 0 0
 #Create all the spectrums
 gfx create spectrum FluidFlow
 gfx modify spectrum FluidFlow clear overwrite_colour
-gfx modify spectrum FluidFlow linear reverse range 0.0 0.90 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum FluidFlow linear reverse range 0.0 1.50 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum FluidPressure
 gfx modify spectrum FluidPressure clear overwrite_colour
-gfx modify spectrum FluidPressure linear reverse range -15.0 21.0 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum FluidPressure linear reverse range -15.0 50.0 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum WallShearStress
 gfx modify spectrum WallShearStress clear overwrite_colour
-gfx modify spectrum WallShearStress linear reverse range -15.0 21.0 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum WallShearStress linear reverse range -15.0 50.0 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum SolidPressure
 gfx modify spectrum SolidPressure clear overwrite_colour

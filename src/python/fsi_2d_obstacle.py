@@ -31,16 +31,19 @@ REFPRESSURE = 4
 #================================================================================================================================
 
 problemType = FSI
+#problemType = FLUID
 
 width = 3.0
 height = 1.5
 
-numberOfSolidXElements = 2
-numberOfSolidYElements = 3
-numberOfFluidX1Elements = 3
-numberOfFluidX2Elements = 3
+numberOfSolidXElements = 1
+numberOfSolidYElements = 2
+numberOfFluidX1Elements = 2
+numberOfFluidX2Elements = 2
 numberOfFluidYElements = 2
 
+#uInterpolation = QUADRATIC_LAGRANGE
+#pInterpolation = LINEAR_LAGRANGE
 uInterpolation = QUADRATIC_SIMPLEX
 pInterpolation = LINEAR_SIMPLEX
 
@@ -116,17 +119,17 @@ elif (uInterpolation == CUBIC_HERMITE):
     simplex = False
 elif (uInterpolation == LINEAR_SIMPLEX):
     numberOfNodesXi = 2
-    gaussOrder = 3
+    gaussOrder = 2
     simplex = True
     simplexOrder = 1
 elif (uInterpolation == QUADRATIC_SIMPLEX):
     numberOfNodesXi = 3
-    gaussOrder = 3
+    gaussOrder = 4
     simplex = True
     simplexOrder = 2
 elif (uInterpolation == CUBIC_SIMPLEX):
     numberOfNodesXi = 4
-    gaussOrder = 3
+    gaussOrder = 5
     simplex = True
     simplexOrder = 3
 else:
@@ -599,78 +602,78 @@ if (progressDiagnostics):
           
 pBasis = iron.Basis()
 pBasis.CreateStart(pBasisUserNumber)
-pBasis.numberOfXi = numberOfDimensions
+pBasis.NumberOfXiSet(numberOfDimensions)
 if (simplex):
-    pBasis.type = iron.BasisTypes.SIMPLEX
-    pBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfDimensions
-    pBasis.quadratureOrderSet = gaussOrder
+    pBasis.TypeSet(iron.BasisTypes.SIMPLEX)
+    pBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfDimensions)
+    pBasis.QuadratureOrderSet(gaussOrder)
 else:
-    pBasis.type = iron.BasisTypes.LAGRANGE_HERMITE_TP
-    pBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions
-    pBasis.quadratureNumberOfGaussXi = [numberOfGaussXi]*numberOfDimensions
+    pBasis.TypeSet(iron.BasisTypes.LAGRANGE_HERMITE_TP)
+    pBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions)
+    pBasis.QuadratureNumberOfGaussXiSet([numberOfGaussXi]*numberOfDimensions)
 pBasis.CreateFinish()
 
 uBasis = iron.Basis()
 uBasis.CreateStart(uBasisUserNumber)
-uBasis.numberOfXi = numberOfDimensions
+uBasis.NumberOfXiSet(numberOfDimensions)
 if (simplex):
-    uBasis.type = iron.BasisTypes.SIMPLEX
+    uBasis.TypeSet(iron.BasisTypes.SIMPLEX)
     if (uInterpolation == LINEAR_SIMPLEX):
-        uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfDimensions
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfDimensions)
     elif (uInterpolation == QUADRATIC_SIMPLEX):
-        uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.QUADRATIC_SIMPLEX]*numberOfDimensions
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_SIMPLEX]*numberOfDimensions)
     elif (uInterpolation == CUBIC_SIMPLEX):
-        uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_SIMPLEX]*numberOfDimensions
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_SIMPLEX]*numberOfDimensions)
     else:
         print('Invalid u interpolation for simplex')
         exit()
-    uBasis.quadratureOrderSet = gaussOrder
+    uBasis.QuadratureOrderSet(gaussOrder)
 else:
-    uBasis.type = iron.BasisTypes.LAGRANGE_HERMITE_TP
+    uBasis.TypeSet(iron.BasisTypes.LAGRANGE_HERMITE_TP)
     if (uInterpolation == LINEAR_LAGRANGE):
-        uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions)
     elif (uInterpolation == QUADRATIC_LAGRANGE):
-        uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfDimensions
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfDimensions)
     elif (uInterpolation == CUBIC_LAGRANGE):
-        uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfDimensions
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfDimensions)
     elif (uInterpolation == CUBIC_HERMITE):
-        uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfDimensions
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfDimensions)
     else:
         print('Invalid u interpolation for non simplex')
-    exit()
-    uBasis.quadratureNumberOfGaussXi = [numberOfGaussXi]*numberOfDimensions
+        exit()
+    uBasis.QuadratureNumberOfGaussXiSet([numberOfGaussXi]*numberOfDimensions)
 uBasis.CreateFinish()
 
 if (problemType == FSI):
     interfaceBasis = iron.Basis()
     interfaceBasis.CreateStart(interfaceBasisUserNumber)
-    interfaceBasis.numberOfXi = numberOfInterfaceDimensions
+    interfaceBasis.NumberOfXiSet(numberOfInterfaceDimensions)
     if (simplex):
-        interfaceBasis.type = iron.BasisTypes.SIMPLEX
+        interfaceBasis.TypeSet(iron.BasisTypes.SIMPLEX)
         if (uInterpolation == LINEAR_SIMPLEX):
-            interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfInterfaceDimensions
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfInterfaceDimensions)
         elif (uInterpolation == QUADRATIC_SIMPLEX):
-            interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.QUADRATIC_SIMPLEX]*numberOfInterfaceDimensions
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_SIMPLEX]*numberOfInterfaceDimensions)
         elif (uInterpolation == CUBIC_SIMPLEX):
-            interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_SIMPLEX]*numberOfInterfaceDimensions
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_SIMPLEX]*numberOfInterfaceDimensions)
         else:
             print('Invalid u interpolation for simplex')
             exit()
-        interfaceBasis.quadratureOrderSet = gaussOrder
+        interfaceBasis.QuadratureOrderSet(gaussOrder)
     else:
-        interfaceBasis.type = iron.BasisTypes.LAGRANGE_HERMITE_TP
+        interfaceBasis.Type(iron.BasisTypes.LAGRANGE_HERMITE_TP)
         if (uInterpolation == LINEAR_LAGRANGE):
-            interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfInterfaceDimensions
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfInterfaceDimensions)
         elif (uInterpolation == QUADRATIC_LAGRANGE):
-            interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfInterfaceDimensions
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfInterfaceDimensions)
         elif (uInterpolation == CUBIC_LAGRANGE):
-            interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfInterfaceDimensions
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfInterfaceDimensions)
         elif (uInterpolation == CUBIC_HERMITE):
-            interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfInterfaceDimensions
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfInterfaceDimensions)
         else:
             print('Invalid u interpolation for non simplex')
             exit()
-        interfaceBasis.quadratureNumberOfGaussXi = [numberOfGaussXi]*numberOfInterfaceDimensions
+        interfaceBasis.QuadratureNumberOfGaussXiSet([numberOfGaussXi]*numberOfInterfaceDimensions)
     interfaceBasis.CreateFinish()
 
 if (progressDiagnostics):
@@ -2658,7 +2661,7 @@ if (progressDiagnostics):
 #  Run Solvers
 #================================================================================================================================
 
-quit()
+#quit()
 
 # Solve the problem
 print('Solving problem...')
