@@ -36,11 +36,11 @@ problemType = FSI
 width = 3.0
 height = 1.5
 
-numberOfSolidXElements = 1
-numberOfSolidYElements = 2
-numberOfFluidX1Elements = 2
-numberOfFluidX2Elements = 2
-numberOfFluidYElements = 2
+numberOfSolidXElements = 4
+numberOfSolidYElements = 8
+numberOfFluidX1Elements = 6
+numberOfFluidX2Elements = 10
+numberOfFluidYElements = 8
 
 #uInterpolation = QUADRATIC_LAGRANGE
 #pInterpolation = LINEAR_LAGRANGE
