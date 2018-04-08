@@ -58,7 +58,7 @@ debugLevel = 3
 
 # Temporal information
 startTime = 0.0
-stopTime  = 5.0
+stopTime  = 5.01
 timeStep  = 0.1
 
 # Inlet velocity parameters
