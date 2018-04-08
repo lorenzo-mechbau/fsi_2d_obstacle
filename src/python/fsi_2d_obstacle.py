@@ -36,11 +36,11 @@ problemType = FSI
 width = 3.0
 height = 1.5
 
-numberOfSolidXElements = 4
-numberOfSolidYElements = 8
-numberOfFluidX1Elements = 6
-numberOfFluidX2Elements = 10
-numberOfFluidYElements = 8
+numberOfSolidXElements = 1
+numberOfSolidYElements = 2
+numberOfFluidX1Elements = 2
+numberOfFluidX2Elements = 4
+numberOfFluidYElements = 2
 
 #uInterpolation = QUADRATIC_LAGRANGE
 #pInterpolation = LINEAR_LAGRANGE
@@ -58,7 +58,7 @@ debugLevel = 3
 
 # Temporal information
 startTime = 0.0
-stopTime  = 10.0
+stopTime  = 5.0
 timeStep  = 0.1
 
 # Inlet velocity parameters
@@ -469,7 +469,8 @@ movingMeshLinearSolverOutputType = iron.SolverOutputTypes.NONE
 fsiDynamicSolverOutputType = iron.SolverOutputTypes.MONITOR
 #fsiDynamicSolverOutputType = iron.SolverOutputTypes.MATRIX
 #fsiNonlinearSolverOutputType = iron.SolverOutputTypes.NONE
-fsiNonlinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
+fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MONITOR
+#fsiNonlinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
 #fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MATRIX
 #fsiLinearSolverOutputType = iron.SolverOutputTypes.NONE
 fsiLinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
