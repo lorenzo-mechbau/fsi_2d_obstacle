@@ -12,7 +12,7 @@ gfx define faces egroup Interface
 #Create the graphics window and set view angles
 gfx create window 1
 gfx modify window 1 layout 2d ortho_axes x y eye_spacing 0.25 height 1000 width 2000 
-gfx modify window 1 view eye_point 0.80 0.35 2.5 interest_point 0.80 0.35 0.0 up_vector 0.0 1.0 0.0 view_angle 40.0 near_clipping_plane 0.00001 far_clipping_plane 100.0
+gfx modify window 1 view eye_point 1.50 0.75 5.0 interest_point 1.50 0.75 0.0 up_vector 0.0 1.0 0.0 view_angle 40.0 near_clipping_plane 0.00001 far_clipping_plane 100.0
 
 #Define the various fields
 gfx define field FluidRegion/FluidVelocities component FluidDependent.1 FluidDependent.2
@@ -40,19 +40,19 @@ gfx create material TransparentSolid normal_mode ambient 0.3 0.3 0.3 diffuse 0 0
 #Create all the spectrums
 gfx create spectrum FluidFlow
 gfx modify spectrum FluidFlow clear overwrite_colour
-gfx modify spectrum FluidFlow linear reverse range 0.0 0.90 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum FluidFlow linear reverse range 0.0 2.00 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum FluidPressure
 gfx modify spectrum FluidPressure clear overwrite_colour
-gfx modify spectrum FluidPressure linear reverse range -15.0 21.0 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum FluidPressure linear reverse range -20.0 20.0 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum WallShearStress
 gfx modify spectrum WallShearStress clear overwrite_colour
-gfx modify spectrum WallShearStress linear reverse range -15.0 21.0 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum WallShearStress linear reverse range -15.0 50.0 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum SolidPressure
 gfx modify spectrum SolidPressure clear overwrite_colour
-gfx modify spectrum SolidPressure linear reverse range -35.0 150.0 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum SolidPressure linear reverse range -20.0 20.0 extend_above extend_below rainbow colour_range 0 1
 
 gfx create spectrum SolidReaction
 gfx modify spectrum SolidReaction clear overwrite_colour
@@ -60,14 +60,14 @@ gfx modify spectrum SolidReaction linear reverse range 0.0 1.00 extend_above ext
 
 gfx create spectrum Lagrange
 gfx modify spectrum Lagrange clear overwrite_colour
-gfx modify spectrum Lagrange linear reverse range 0.0 125.0 extend_above extend_below rainbow colour_range 0 1
+gfx modify spectrum Lagrange linear reverse range 0.0 750.0 extend_above extend_below rainbow colour_range 0 1
 
 #Display lines
 gfx modify g_element FluidRegion lines coordinate FluidGeometry 
 gfx modify g_element SolidRegion lines coordinate SolidGeometry material yellow
 
 #Display flow glyphs
-gfx modify g_element FluidRegion node_points glyph arrow_solid general size "0.01*0.01*0.0" centre 0,0,0 font default orientation FluidVelocities select_on material default data FluidVelocityMagnitude scale_factors "0.1*0.01*0.00" selected_material default_selected spectrum FluidFlow
+gfx modify g_element FluidRegion node_points glyph arrow_solid general size "0.02*0.02*0.0" centre 0,0,0 font default orientation FluidVelocities select_on material default data FluidVelocityMagnitude scale_factors "0.1*0.01*0.00" selected_material default_selected spectrum FluidFlow
 
 #Display fluid pressure on the solid
 gfx modify g_element FluidRegion surfaces select_on material default data FluidPressure spectrum FluidPressure selected_material default_selected render_shaded;

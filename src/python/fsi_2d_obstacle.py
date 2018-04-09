@@ -2,45 +2,50 @@
 #> Finite Elasticity-ALE NavierStokes equation using OpenCMISS
 #> calls.
 #>
-#> By Chris Bradley, Andreas Hessenthaler, Soroush Safaei
+#> By Chris Bradley, Andreas Hessenthaler, Soroush Safaei, Zohreh Ekhlasi
 #>
 
 #================================================================================================================================
-#  Start Program
+#  Symbol Definitions
 #================================================================================================================================
-
 
 FLUID = 1
 SOLID = 2
 FSI = 3
 
-problemType = FSI
-
-LINEAR = 1
-QUADRATIC = 2
-CUBIC = 3
-HERMITE = 4
+LINEAR_LAGRANGE = 1
+QUADRATIC_LAGRANGE = 2
+CUBIC_LAGRANGE = 3
+CUBIC_HERMITE = 4
+LINEAR_SIMPLEX = 5
+QUADRATIC_SIMPLEX = 6
+CUBIC_SIMPLEX = 7
 
 NOTHING = 1
 VELOCITY = 2
 PRESSURE = 3
 REFPRESSURE = 4
 
-numberOfSolidXElements = 2
-numberOfSolidYElements = 4
-numberOfFluidX1Elements = 4
+#================================================================================================================================
+#  User changeable example parameters
+#================================================================================================================================
+
+problemType = FSI
+#problemType = FLUID
+
+width = 3.0
+height = 1.5
+
+numberOfSolidXElements = 4
+numberOfSolidYElements = 8
+numberOfFluidX1Elements = 6
 numberOfFluidX2Elements = 10
-numberOfFluidYElements = 3
+numberOfFluidYElements = 8
 
-elementSize = 0.1
-solidXSize = numberOfSolidXElements*elementSize
-solidYSize = numberOfSolidYElements*elementSize
-fluidX1Size = numberOfFluidX1Elements*elementSize
-fluidX2Size = numberOfFluidX2Elements*elementSize
-fluidYSize = numberOfFluidYElements*elementSize
-
-uInterpolation = QUADRATIC
-pInterpolation = LINEAR
+#uInterpolation = QUADRATIC_LAGRANGE
+#pInterpolation = LINEAR_LAGRANGE
+uInterpolation = QUADRATIC_SIMPLEX
+pInterpolation = LINEAR_SIMPLEX
 
 #RBS = False
 RBS = True
@@ -93,14 +98,59 @@ linearRestartValue           = 30        #default: 30
 #  Should not need to change anything below here.
 #================================================================================================================================
 
-
 numberOfDimensions = 2
 numberOfInterfaceDimensions = 1
 
-if (uInterpolation == HERMITE):
+if (uInterpolation == LINEAR_LAGRANGE):
     numberOfNodesXi = 2
+    numberOfGaussXi = 2
+    simplex = False
+elif (uInterpolation == QUADRATIC_LAGRANGE):
+    numberOfNodesXi = 3
+    numberOfGaussXi = 3
+    simplex = False
+elif (uInterpolation == CUBIC_LAGRANGE):
+    numberOfNodesXi = 4
+    numberOfGaussXi = 3
+    simplex = False
+elif (uInterpolation == CUBIC_HERMITE):
+    numberOfNodesXi = 2
+    numberOfGaussXi = 3
+    simplex = False
+elif (uInterpolation == LINEAR_SIMPLEX):
+    numberOfNodesXi = 2
+    gaussOrder = 2
+    simplex = True
+    simplexOrder = 1
+elif (uInterpolation == QUADRATIC_SIMPLEX):
+    numberOfNodesXi = 3
+    gaussOrder = 4
+    simplex = True
+    simplexOrder = 2
+elif (uInterpolation == CUBIC_SIMPLEX):
+    numberOfNodesXi = 4
+    gaussOrder = 5
+    simplex = True
+    simplexOrder = 3
 else:
-    numberOfNodesXi = uInterpolation+1
+    print('Invalid u interpolation')
+    exit()
+    
+if (simplex):
+    numberOfSubElements = 2
+    if (not ((pInterpolation == LINEAR_SIMPLEX) or (pInterpolation == QUADRATIC_SIMPLEX) or (pInterpolation == CUBIC_SIMPLEX))):
+        print('If the u interpolation is of simplex type the p interpolation must be of simplex type.')
+        exit()
+else:
+    numberOfSubElements = 1
+
+xElementSize = width/(numberOfFluidX1Elements+numberOfSolidXElements+numberOfFluidX2Elements)
+yElementSize = height/(numberOfSolidYElements+numberOfFluidYElements)
+solidXSize = numberOfSolidXElements*xElementSize
+solidYSize = numberOfSolidYElements*yElementSize
+fluidX1Size = numberOfFluidX1Elements*xElementSize
+fluidX2Size = numberOfFluidX2Elements*xElementSize
+fluidYSize = numberOfFluidYElements*yElementSize
 
 numberOfSolidXNodes = numberOfSolidXElements*(numberOfNodesXi-1)+1
 numberOfSolidYNodes = numberOfSolidYElements*(numberOfNodesXi-1)+1
@@ -110,29 +160,43 @@ numberOfFluidX2Nodes = numberOfFluidX2Elements*(numberOfNodesXi-1)+1
 numberOfFluidXNodes1 = numberOfFluidX1Nodes+numberOfFluidX2Nodes+numberOfSolidXNodes-2
 numberOfFluidXNodes2 = numberOfFluidX1Nodes+numberOfFluidX2Nodes
 numberOfFluidYNodes = numberOfFluidYElements*(numberOfNodesXi-1)+1
-numberOfFluidNodes = (numberOfFluidX1Elements*numberOfNodesXi)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
-                    (numberOfFluidX2Elements*numberOfNodesXi)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
+numberOfFluidNodes = (numberOfFluidX1Elements*(numberOfNodesXi-1)+1)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
+                    (numberOfFluidX2Elements*(numberOfNodesXi-1)+1)*(numberOfSolidYElements*(numberOfNodesXi-1))+ \
                     ((numberOfFluidX1Elements+numberOfFluidX2Elements+numberOfSolidXElements)*(numberOfNodesXi-1)+1)* \
                     (numberOfFluidYElements*(numberOfNodesXi-1)+1)
 numberOfInterfaceNodes = (numberOfSolidXElements*(numberOfNodesXi-1)+1)+2*numberOfSolidYElements*(numberOfNodesXi-1)
-numberOfSolidElements = numberOfSolidXElements*numberOfSolidYElements
-numberOfFluidXElements1 = numberOfFluidX1Elements+numberOfFluidX2Elements+numberOfSolidXElements
-numberOfFluidXElements2 = numberOfFluidX1Elements+numberOfFluidX2Elements
-numberOfFluidElements = (numberOfFluidX1Elements+numberOfFluidX2Elements+numberOfSolidXElements)* \
-                        (numberOfSolidYElements+numberOfFluidYElements) - numberOfSolidElements
+numberOfSolidElements = numberOfSolidXElements*numberOfSolidYElements*numberOfSubElements
+numberOfFluidXElements1 = (numberOfFluidX1Elements+numberOfFluidX2Elements+numberOfSolidXElements)*numberOfSubElements
+numberOfFluidXElements2 = (numberOfFluidX1Elements+numberOfFluidX2Elements)*numberOfSubElements
+numberOfFluidElements = ((numberOfFluidX1Elements+numberOfFluidX2Elements+numberOfSolidXElements)*numberOfSubElements* \
+                        (numberOfSolidYElements+numberOfFluidYElements) - numberOfSolidElements)
 numberOfInterfaceElements = numberOfSolidXElements+2*numberOfSolidYElements
 
-numberOfLocalNodes = numberOfNodesXi*numberOfNodesXi
 numberOfLocalInterfaceNodes = numberOfNodesXi
-localNodeIdx00 = 0
-localNodeIdx10 = numberOfNodesXi-1
-localNodeIdx01 = numberOfNodesXi*(numberOfNodesXi-1)
-localNodeIdx11 = numberOfNodesXi*numberOfNodesXi-1
-
+localNodeIdx0=0
+localNodeIdx1=numberOfNodesXi-1
+if (simplex):
+    if (uInterpolation == LINEAR_SIMPLEX):
+        numberOfLocalNodes = 3
+    elif (uInterpolation == QUADRATIC_SIMPLEX):
+        numberOfLocalNodes = 6
+    elif (uInterpolation == CUBIC_SIMPLEX):
+        numberOfLocalNodes = 10
+    localNodeIdx00 = 0
+    localNodeIdx100 = 0
+    localNodeIdx010 = 1
+    localNodeIdx001 = 2
+else:
+    numberOfLocalNodes = numberOfNodesXi*numberOfNodesXi
+    localNodeIdx00 = 0
+    localNodeIdx10 = numberOfNodesXi-1
+    localNodeIdx01 = numberOfNodesXi*(numberOfNodesXi-1)
+    localNodeIdx11 = numberOfNodesXi*numberOfNodesXi-1
+    
 solidCoordinateSystemUserNumber     = 1
 fluidCoordinateSystemUserNumber     = 2
 interfaceCoordinateSystemUserNumber = 3
-  
+
 solidRegionUserNumber = 1
 fluidRegionUserNumber = 2
 interfaceUserNumber   = 3
@@ -145,11 +209,11 @@ solidMeshUserNumber     = 1
 fluidMeshUserNumber     = 2
 interfaceMeshUserNumber = 3
 movingMeshUserNumber    = 4
-  
+          
 solidDecompositionUserNumber     = 1
 fluidDecompositionUserNumber     = 2
 interfaceDecompositionUserNumber = 3
-  
+          
 solidGeometricFieldUserNumber     = 11
 solidFibreFieldUserNumber     = 12
 solidEquationsSetFieldUserNumber = 13
@@ -174,7 +238,7 @@ movingMeshIndependentFieldUserNumber  = 34
 
 interfaceGeometricFieldUserNumber = 41
 interfaceLagrangeFieldUserNumber  = 42
- 
+
 solidEquationsSetUserNumber  = 1
 fluidEquationsSetUserNumber  = 2
 movingMeshEquationsSetUserNumber = 3
@@ -182,21 +246,20 @@ movingMeshEquationsSetUserNumber = 3
 bcCellMLUserNumber = 1
 
 interfaceConditionUserNumber = 1
-  
+          
 fsiProblemUserNumber = 1
 
 #================================================================================================================================
 #  Define functions
 #================================================================================================================================
 
-
-def GetElementNodes2D(elementNumber,localNodes2D,numberOfXNodes1,numberOfXNodes2):
-    if (uInterpolation == LINEAR or uInterpolation == HERMITE):
+def GetElementNodes2D(elementNumber,subElementNumber,localNodes2D,numberOfXNodes1,numberOfXNodes2):
+    if (uInterpolation == LINEAR_LAGRANGE or uInterpolation == CUBIC_HERMITE):
         localNodes2D[localNodeIdx10] = localNodes2D[localNodeIdx00]+(numberOfNodesXi-1)
         localNodes2D[localNodeIdx01] = localNodes2D[localNodeIdx00]+numberOfXNodes2
         localNodes2D[localNodeIdx11] = localNodes2D[localNodeIdx01]+(numberOfNodesXi-1)
         uNodes2D = [localNodes2D[localNodeIdx00],localNodes2D[localNodeIdx10],localNodes2D[localNodeIdx01],localNodes2D[localNodeIdx11]]
-    elif (uInterpolation == QUADRATIC):
+    elif (uInterpolation == QUADRATIC_LAGRANGE):
         localNodes2D[localNodeIdx10] = localNodes2D[localNodeIdx00]+(numberOfNodesXi-1)
         localNodes2D[localNodeIdx01] = localNodes2D[localNodeIdx00]+numberOfXNodes1+numberOfXNodes2
         localNodes2D[localNodeIdx11] = localNodes2D[localNodeIdx01]+(numberOfNodesXi-1)
@@ -206,7 +269,7 @@ def GetElementNodes2D(elementNumber,localNodes2D,numberOfXNodes1,numberOfXNodes2
         localNodes2D[5] = localNodes2D[4] + 1
         localNodes2D[7] = localNodes2D[localNodeIdx01] + 1
         uNodes2D = localNodes2D
-    elif (uInterpolation == CUBIC):
+    elif (uInterpolation == CUBIC_LAGRANGE):
         localNodes2D[localNodeIdx10] = localNodes2D[localNodeIdx00]+(numberOfNodesXi-1)
         localNodes2D[localNodeIdx01] = localNodes2D[localNodeIdx00]+2*numberOfXNodes1+numberOfXNodes2
         localNodes2D[localNodeIdx11] = localNodes2D[localNodeIdx01]+(numberOfNodesXi-1)
@@ -223,31 +286,81 @@ def GetElementNodes2D(elementNumber,localNodes2D,numberOfXNodes1,numberOfXNodes2
         localNodes2D[13] = localNodes2D[localNodeIdx01] + 1
         localNodes2D[14] = localNodes2D[13] + 1
         uNodes2D = localNodes2D
+    elif (uInterpolation == LINEAR_SIMPLEX):
+        if (subElementNumber == 1):
+            localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + numberOfXNodes2 + 1
+            localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + numberOfXNodes2
+        else:
+            localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 1
+            localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + numberOfXNodes2 + 1
+        uNodes2D = [localNodes2D[localNodeIdx100],localNodes2D[localNodeIdx010],localNodes2D[localNodeIdx001]]
+    elif (uInterpolation == QUADRATIC_SIMPLEX):
+        if (subElementNumber == 1):
+            localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2 + 2
+            localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2
+            localNodes2D[3] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + 1
+            localNodes2D[4] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2 + 1
+            localNodes2D[5] = localNodes2D[localNodeIdx100] + numberOfXNodes1
+        else:
+	    localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 2
+            localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2 + 2
+            localNodes2D[3] = localNodes2D[localNodeIdx100] + 1
+            localNodes2D[4] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + 2
+            localNodes2D[5] = localNodes2D[localNodeIdx00] + numberOfXNodes1 + 1           
+        uNodes2D = [localNodes2D[localNodeIdx100],localNodes2D[localNodeIdx010],localNodes2D[localNodeIdx001],localNodes2D[3],localNodes2D[4],localNodes2D[5]]
+    elif (uInterpolation == CUBIC_SIMPLEX):
+        if (subElementNumber == 1):
+            localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1 + numberOfXNodes2 + 3
+            localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1 + numberOfXNodes2
+            localNodes2D[3] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + 1
+            localNodes2D[4] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1 + 2
+            localNodes2D[5] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1 + numberOfXNodes2 + 2
+            localNodes2D[6] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1 + numberOfXNodes2 + 1
+            localNodes2D[7] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1
+            localNodes2D[8] = localNodes2D[localNodeIdx100] + numberOfXNodes1
+            localNodes2D[9] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1 + 1
+        else:
+            localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 3
+            localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + 2*numberOfXNodes1+numberOfXNodes2 + 3
+            localNodes2D[3] = localNodes2D[localNodeIdx100] + 1
+            localNodes2D[4] = localNodes2D[localNodeIdx100] + 2
+            localNodes2D[5] = localNodes2D[localNodeIdx00] + numberOfXNodes1 + 3
+            localNodes2D[6] = localNodes2D[localNodeIdx00] + 2*numberOfXNodes1 + 3
+            localNodes2D[7] = localNodes2D[localNodeIdx00] + 2*numberOfXNodes1 + 2
+            localNodes2D[8] = localNodes2D[localNodeIdx00] + numberOfXNodes1 + 1
+            localNodes2D[9] = localNodes2D[localNodeIdx00] + numberOfXNodes1 + 2
+        uNodes2D = [localNodes2D[localNodeIdx100],localNodes2D[localNodeIdx010],localNodes2D[localNodeIdx001], \
+                    localNodes2D[3],localNodes2D[4],localNodes2D[5],localNodes2D[6],localNodes2D[7],localNodes2D[8], \
+                    localNodes2D[9]]
     else:
         print('Invalid u interpolation')
-        exit()                    
-    pNodes2D = [localNodes2D[localNodeIdx00],localNodes2D[localNodeIdx10],localNodes2D[localNodeIdx01],localNodes2D[localNodeIdx11]]
+        exit()
+    if (simplex):
+        pNodes2D = [localNodes2D[localNodeIdx100],localNodes2D[localNodeIdx010],localNodes2D[localNodeIdx001]]
+    else:
+        pNodes2D = [localNodes2D[localNodeIdx00],localNodes2D[localNodeIdx10],localNodes2D[localNodeIdx01],localNodes2D[localNodeIdx11]]          
     if (debugLevel > 2):
         print('    Element %8d' %(elementNumber))
-        print('      U Nodes: '+str(uNodes2D))
-        print('      P Nodes: '+str(pNodes2D))
+        print('      Sub-element %8d' %(subElementNumber))
+        print('        U Nodes: '+str(uNodes2D))
+        print('        P Nodes: '+str(pNodes2D))
     return uNodes2D,pNodes2D
 
 def GetElementNodes1D(elementNumber,localNodes1D):
-    localNodes1D[localNodeIdx10] = localNodes1D[localNodeIdx00]+(numberOfNodesXi-1)
-    if (uInterpolation == LINEAR or uInterpolation == HERMITE):
-        uNodes1D = [localNodes1D[localNodeIdx00],localNodes1D[localNodeIdx10]]
-    elif (uInterpolation == QUADRATIC):
-        localNodes1D[1] = localNodes1D[localNodeIdx00]+1
-        uNodes1D = [localNodes1D[localNodeIdx00],localNodes1D[1],localNodes1D[localNodeIdx10]]
-    elif (uInterpolation == CUBIC):
-        localNodes1D[1] = localNodes1D[localNodeIdx00]+1
+    localNodes1D[localNodeIdx1] = localNodes1D[localNodeIdx0]+(numberOfNodesXi-1)
+    if (uInterpolation == LINEAR_LAGRANGE or uInterpolation == CUBIC_HERMITE or uInterpolation == LINEAR_SIMPLEX):
+        uNodes1D = [localNodes1D[localNodeIdx0],localNodes1D[localNodeIdx1]]
+    elif (uInterpolation == QUADRATIC_LAGRANGE or uInterpolation == QUADRATIC_SIMPLEX):
+        localNodes1D[1] = localNodes1D[localNodeIdx0]+1
+        uNodes1D = [localNodes1D[localNodeIdx0],localNodes1D[1],localNodes1D[localNodeIdx1]]
+    elif (uInterpolation == CUBIC_LAGRANGE or uInterpolation == CUBIC_SIMPLEX):
+        localNodes1D[1] = localNodes1D[localNodeIdx0]+1
         localNodes1D[2] = localNodes1D[1]+1
-        uNodes1D = [localNodes1D[localNodeIdx00],localNodes1D[1],localNodes1D[2],localNodes1D[localNodeIdx10]]
+        uNodes1D = [localNodes1D[localNodeIdx0],localNodes1D[1],localNodes1D[2],localNodes1D[localNodeIdx1]]
     else:
         print('Invalid u interpolation')
         exit()                    
-    pNodes1D = [localNodes1D[localNodeIdx00],localNodes1D[localNodeIdx10]]
+    pNodes1D = [localNodes1D[localNodeIdx0],localNodes1D[localNodeIdx1]]
     if (debugLevel > 2):
         print('    Element %8d' %(elementNumber))
         print('      U Nodes: '+str(uNodes1D))
@@ -262,7 +375,7 @@ def SetNodeParameters2D(nodeNumber,field,xPosition,yPosition):
     if (debugLevel > 2):
         print('      Node        %d:' % (nodeNumber))
         print('         Position         = [ %.2f, %.2f ]' % (xPosition,yPosition))                 
-    if (uInterpolation == HERMITE):
+    if (uInterpolation == CUBIC_HERMITE):
         field.ParameterSetUpdateNodeDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,
                                        1,iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber,1,1.0)
         field.ParameterSetUpdateNodeDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,
@@ -274,7 +387,7 @@ def SetNodeParameters2D(nodeNumber,field,xPosition,yPosition):
         if (debugLevel > 2):
             print('        S1 derivative    = [ %.2f, %.2f ]' % (1.0,0.0))                 
             print('        S2 derivative    = [ %.2f, %.2f ]' % (0.0,1.0))                 
-
+            
 def SetNodeParameters1D(nodeNumber,field,xPosition,yPosition,xTangent,yTangent):
     field.ParameterSetUpdateNodeDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,
                                    1,iron.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber,1,xPosition)
@@ -283,14 +396,14 @@ def SetNodeParameters1D(nodeNumber,field,xPosition,yPosition,xTangent,yTangent):
     if (debugLevel > 2):
         print('      Node        %d:' % (nodeNumber))
         print('         Position         = [ %.2f, %.2f ]' % (xPosition,yPosition))                 
-    if (uInterpolation == HERMITE):
+    if (uInterpolation == CUBIC_HERMITE):
         field.ParameterSetUpdateNodeDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,
                                        1,iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber,1,xTangent)
         field.ParameterSetUpdateNodeDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,
                                        1,iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber,2,yTangent)
         if (debugLevel > 2):
             print('        S1 derivative    = [ %.2f, %.2f ]' % (xTangent,yTangent))                 
-
+            
 #================================================================================================================================
 #  Initialise OpenCMISS
 #================================================================================================================================
@@ -317,7 +430,7 @@ iron.OutputSetOn("Testing")
 # Get the computational nodes info
 numberOfComputationalNodes = iron.ComputationalNumberOfNodesGet()
 computationalNodeNumber    = iron.ComputationalNodeNumberGet()
-        
+          
 #================================================================================================================================
 #  Initial Data & Default Values
 #================================================================================================================================
@@ -390,14 +503,20 @@ if (setupOutput):
     print('  Mesh parameters')
     print('  -------------------')
     print(' ')
-    if (uInterpolation == LINEAR):
-        print('    U interpolation: LINEAR')
-    elif (uInterpolation == QUADRATIC):
-        print('    U interpolation: QUADRATIC')
-    elif (uInterpolation == CUBIC):
-        print('    U interpolation: CUBIC')
-    elif (uInterpolation == HERMITE):
-        print('    U interpolation: HERMITE')
+    if (uInterpolation == LINEAR_LAGRANGE):
+        print('    U interpolation: LINEAR_LAGRANGE')
+    elif (uInterpolation == QUADRATIC_LAGRANGE):
+        print('    U interpolation: QUADRATIC_LAGRANGE')
+    elif (uInterpolation == CUBIC_LAGRANGE):
+        print('    U interpolation: CUBIC_LAGRANGE')
+    elif (uInterpolation == CUBIC_HERMITE):
+        print('    U interpolation: CUBIC_HERMITE')
+    elif (uInterpolation == LINEAR_SIMPLEX):
+        print('    U interpolation: LINEAR_SIMPLEX')
+    elif (uInterpolation == QUADRATIC_SIMPLEX):
+        print('    U interpolation: QUADRATIC_SIMPLEX')
+    elif (uInterpolation == CUBIC_SIMPLEX):
+        print('    U interpolation: CUBIC_SIMPLEX')
     else:
         print('Invalid u interpolation')
         exit()            
@@ -418,7 +537,7 @@ if (setupOutput):
         print('    Interface:')
         print('      Number of nodes: {0:d}'.format(numberOfInterfaceNodes))
         print('      Number of elements: {0:d}'.format(numberOfInterfaceElements))
- 
+        
 #================================================================================================================================
 #  Coordinate Systems
 #================================================================================================================================
@@ -445,10 +564,10 @@ if (problemType == FSI):
     interfaceCoordinateSystem.CreateStart(interfaceCoordinateSystemUserNumber)
     interfaceCoordinateSystem.DimensionSet(numberOfDimensions)
     interfaceCoordinateSystem.CreateFinish()
-
+    
 if (progressDiagnostics):
     print('Coordinate systems ... Done')
-  
+    
 #================================================================================================================================
 #  Regions
 #================================================================================================================================
@@ -480,62 +599,81 @@ if (progressDiagnostics):
 
 if (progressDiagnostics):
     print('Basis functions ...')
-
-if (uInterpolation == LINEAR):
-    numberOfGaussXi = 2
-elif (uInterpolation == QUADRATIC):
-    numberOfGaussXi = 3
-elif (uInterpolation == CUBIC):
-    numberOfGaussXi = 3
-elif (uInterpolation == HERMITE):
-    numberOfGaussXi = 3
-else:
-    print('Invalid u interpolation')
-    exit()
-        
+          
 pBasis = iron.Basis()
 pBasis.CreateStart(pBasisUserNumber)
-pBasis.type = iron.BasisTypes.LAGRANGE_HERMITE_TP
-pBasis.numberOfXi = numberOfDimensions
-pBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions
-pBasis.quadratureNumberOfGaussXi = [numberOfGaussXi]*numberOfDimensions
+pBasis.NumberOfXiSet(numberOfDimensions)
+if (simplex):
+    pBasis.TypeSet(iron.BasisTypes.SIMPLEX)
+    pBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfDimensions)
+    pBasis.QuadratureOrderSet(gaussOrder)
+else:
+    pBasis.TypeSet(iron.BasisTypes.LAGRANGE_HERMITE_TP)
+    pBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions)
+    pBasis.QuadratureNumberOfGaussXiSet([numberOfGaussXi]*numberOfDimensions)
 pBasis.CreateFinish()
 
 uBasis = iron.Basis()
 uBasis.CreateStart(uBasisUserNumber)
-uBasis.type = iron.BasisTypes.LAGRANGE_HERMITE_TP
-uBasis.numberOfXi = numberOfDimensions
-if (uInterpolation == LINEAR):
-    uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions
-elif (uInterpolation == QUADRATIC):
-    uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfDimensions
-elif (uInterpolation == CUBIC):
-    uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfDimensions
-elif (uInterpolation == HERMITE):
-    uBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfDimensions
+uBasis.NumberOfXiSet(numberOfDimensions)
+if (simplex):
+    uBasis.TypeSet(iron.BasisTypes.SIMPLEX)
+    if (uInterpolation == LINEAR_SIMPLEX):
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfDimensions)
+    elif (uInterpolation == QUADRATIC_SIMPLEX):
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_SIMPLEX]*numberOfDimensions)
+    elif (uInterpolation == CUBIC_SIMPLEX):
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_SIMPLEX]*numberOfDimensions)
+    else:
+        print('Invalid u interpolation for simplex')
+        exit()
+    uBasis.QuadratureOrderSet(gaussOrder)
 else:
-    print('Invalid u interpolation')
-    exit()
-uBasis.quadratureNumberOfGaussXi = [numberOfGaussXi]*numberOfDimensions
+    uBasis.TypeSet(iron.BasisTypes.LAGRANGE_HERMITE_TP)
+    if (uInterpolation == LINEAR_LAGRANGE):
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfDimensions)
+    elif (uInterpolation == QUADRATIC_LAGRANGE):
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfDimensions)
+    elif (uInterpolation == CUBIC_LAGRANGE):
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfDimensions)
+    elif (uInterpolation == CUBIC_HERMITE):
+        uBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfDimensions)
+    else:
+        print('Invalid u interpolation for non simplex')
+        exit()
+    uBasis.QuadratureNumberOfGaussXiSet([numberOfGaussXi]*numberOfDimensions)
 uBasis.CreateFinish()
 
 if (problemType == FSI):
     interfaceBasis = iron.Basis()
     interfaceBasis.CreateStart(interfaceBasisUserNumber)
-    interfaceBasis.type = iron.BasisTypes.LAGRANGE_HERMITE_TP
-    interfaceBasis.numberOfXi = numberOfInterfaceDimensions
-    if (uInterpolation == LINEAR):
-        interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfInterfaceDimensions
-    elif (uInterpolation == QUADRATIC):
-        interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfInterfaceDimensions
-    elif (uInterpolation == CUBIC):
-        interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfInterfaceDimensions
-    elif (uInterpolation == HERMITE):
-        interfaceBasis.interpolationXi = [iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfInterfaceDimensions
+    interfaceBasis.NumberOfXiSet(numberOfInterfaceDimensions)
+    if (simplex):
+        interfaceBasis.TypeSet(iron.BasisTypes.SIMPLEX)
+        if (uInterpolation == LINEAR_SIMPLEX):
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_SIMPLEX]*numberOfInterfaceDimensions)
+        elif (uInterpolation == QUADRATIC_SIMPLEX):
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_SIMPLEX]*numberOfInterfaceDimensions)
+        elif (uInterpolation == CUBIC_SIMPLEX):
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_SIMPLEX]*numberOfInterfaceDimensions)
+        else:
+            print('Invalid u interpolation for simplex')
+            exit()
+        interfaceBasis.QuadratureOrderSet(gaussOrder)
     else:
-        print('Invalid u interpolation')
-        exit()
-    interfaceBasis.quadratureNumberOfGaussXi = [numberOfGaussXi]*numberOfInterfaceDimensions
+        interfaceBasis.Type(iron.BasisTypes.LAGRANGE_HERMITE_TP)
+        if (uInterpolation == LINEAR_LAGRANGE):
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfInterfaceDimensions)
+        elif (uInterpolation == QUADRATIC_LAGRANGE):
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.QUADRATIC_LAGRANGE]*numberOfInterfaceDimensions)
+        elif (uInterpolation == CUBIC_LAGRANGE):
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_LAGRANGE]*numberOfInterfaceDimensions)
+        elif (uInterpolation == CUBIC_HERMITE):
+            interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.CUBIC_HERMITE]*numberOfInterfaceDimensions)
+        else:
+            print('Invalid u interpolation for non simplex')
+            exit()
+        interfaceBasis.QuadratureNumberOfGaussXiSet([numberOfGaussXi]*numberOfInterfaceDimensions)
     interfaceBasis.CreateFinish()
 
 if (progressDiagnostics):
@@ -573,12 +711,13 @@ if (problemType != FLUID):
         print('  Solid Elements:')
     for yElementIdx in range(1,numberOfSolidYElements+1):
         for xElementIdx in range(1,numberOfSolidXElements+1):
-            elementNumber = xElementIdx+(yElementIdx-1)*numberOfSolidXElements
-            localNodes2D[localNodeIdx00]=(xElementIdx-1)*(numberOfNodesXi-1)+1+ \
-                         (yElementIdx-1)*(numberOfNodesXi-1)*(numberOfSolidXNodes)
-            [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,localNodes2D,numberOfSolidXNodes,numberOfSolidXNodes)
-            solidUElements.NodesSet(elementNumber,uNodes2D)
-            solidPElements.NodesSet(elementNumber,pNodes2D)
+            for subElementIdx in range(1,numberOfSubElements+1):
+                elementNumber = subElementIdx+((xElementIdx-1)+(yElementIdx-1)*numberOfSolidXElements)*numberOfSubElements
+                localNodes2D[localNodeIdx00]=(xElementIdx-1)*(numberOfNodesXi-1)+1+ \
+                                              (yElementIdx-1)*(numberOfNodesXi-1)*(numberOfSolidXNodes)
+                [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfSolidXNodes,numberOfSolidXNodes)
+                solidUElements.NodesSet(elementNumber,uNodes2D)
+                solidPElements.NodesSet(elementNumber,pNodes2D)
 
     solidUElements.CreateFinish()
     solidPElements.CreateFinish()
@@ -607,34 +746,38 @@ if (problemType != SOLID):
     for yElementIdx in range(1,numberOfSolidYElements+1):
         # Elements to the left of the solid
         for xElementIdx in range(1,numberOfFluidX1Elements+1):
-            elementNumber = xElementIdx+(yElementIdx-1)*numberOfFluidXElements2
-            localNodes2D[localNodeIdx00] = (xElementIdx-1)*(numberOfNodesXi-1)+1+\
-                                           (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
-            [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes2)
-            fluidUElements.NodesSet(elementNumber,uNodes2D)
-            fluidPElements.NodesSet(elementNumber,pNodes2D)
+            for subElementIdx in range(1,numberOfSubElements+1):
+                elementNumber = subElementIdx+(xElementIdx-1)*numberOfSubElements+(yElementIdx-1)*numberOfFluidXElements2
+                localNodes2D[localNodeIdx00] = (xElementIdx-1)*(numberOfNodesXi-1)+1+\
+                                               (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
+                [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes2)
+                fluidUElements.NodesSet(elementNumber,uNodes2D)
+                fluidPElements.NodesSet(elementNumber,pNodes2D)
         # Elements to the right of the solid
         for xElementIdx in range(1,numberOfFluidX2Elements+1):
-            elementNumber = numberOfFluidX1Elements+xElementIdx+(yElementIdx-1)*(numberOfFluidX1Elements+numberOfFluidX2Elements)
-            localNodes2D[localNodeIdx00] = numberOfFluidX1Nodes+(xElementIdx-1)*(numberOfNodesXi-1)+1+\
-                                           (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
-            if(yElementIdx == numberOfSolidYElements):
-                [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes1)
-            else: 
-                [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes2)
-            fluidUElements.NodesSet(elementNumber,uNodes2D)
-            fluidPElements.NodesSet(elementNumber,pNodes2D)
+            for subElementIdx in range(1,numberOfSubElements+1):
+                elementNumber = numberOfFluidX1Elements*numberOfSubElements+subElementIdx+(xElementIdx-1)*numberOfSubElements+\
+                                (yElementIdx-1)*numberOfFluidXElements2
+                localNodes2D[localNodeIdx00] = numberOfFluidX1Nodes+(xElementIdx-1)*(numberOfNodesXi-1)+1+\
+                                               (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
+                if(yElementIdx == numberOfSolidYElements):
+                    [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes1)
+                else: 
+                    [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes2)
+                fluidUElements.NodesSet(elementNumber,uNodes2D)
+                fluidPElements.NodesSet(elementNumber,pNodes2D)
     # Elements above the solid
     for yElementIdx in range(1,numberOfFluidYElements+1):
-        for xElementIdx in range(1,numberOfFluidXElements1+1):
-            elementNumber = numberOfFluidXElements2*numberOfSolidYElements+xElementIdx+\
-                            (yElementIdx-1)*numberOfFluidXElements1
-            localNodes2D[localNodeIdx00] = numberOfFluidXNodes2*(numberOfSolidYNodes-1)+ \
-                                           (xElementIdx-1)*(numberOfNodesXi-1)+1+\
-                                           (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes1
-            [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,localNodes2D,numberOfFluidXNodes1,numberOfFluidXNodes1)
-            fluidUElements.NodesSet(elementNumber,uNodes2D)
-            fluidPElements.NodesSet(elementNumber,pNodes2D)
+        for xElementIdx in range(1,numberOfFluidX1Elements+numberOfSolidXElements+numberOfFluidX2Elements+1):
+            for subElementIdx in range(1,numberOfSubElements+1):
+                elementNumber = numberOfFluidXElements2*numberOfSolidYElements+subElementIdx+(xElementIdx-1)*numberOfSubElements+\
+                                (yElementIdx-1)*numberOfFluidXElements1
+                localNodes2D[localNodeIdx00] = numberOfFluidXNodes2*(numberOfSolidYNodes-1)+ \
+                                            (xElementIdx-1)*(numberOfNodesXi-1)+1+\
+                                            (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes1
+                [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfFluidXNodes1,numberOfFluidXNodes1)
+                fluidUElements.NodesSet(elementNumber,uNodes2D)
+                fluidPElements.NodesSet(elementNumber,pNodes2D)
 
     fluidUElements.CreateFinish()
     fluidPElements.CreateFinish()
@@ -732,8 +875,8 @@ if (problemType == FSI):
         interfaceElementNumber = interfaceElementNumber + 1
         if (debugLevel > 2):
             print('  Interface Element %8d:' % (interfaceElementNumber))        
-        solidElementNumber = (interfaceElementIdx - 1)*numberOfSolidXElements + 1
-        fluidElementNumber = numberOfFluidX1Elements+(interfaceElementIdx - 1)*numberOfFluidXElements2
+        solidElementNumber = (interfaceElementIdx - 1)*numberOfSolidXElements*numberOfSubElements + 1
+        fluidElementNumber = numberOfFluidX1Elements*numberOfSubElements+(interfaceElementIdx - 1)*numberOfFluidXElements2
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
@@ -742,11 +885,11 @@ if (problemType == FSI):
         localInterfaceNodes[0] = (interfaceElementIdx-1)*(numberOfNodesXi-1) + 1
         localSolidNodes[0] = (interfaceElementIdx-1)*(numberOfNodesXi-1)*numberOfSolidXNodes+1
         localFluidNodes[0] = numberOfFluidX1Nodes + (interfaceElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
-        if (uInterpolation == QUADRATIC):
+        if (uInterpolation == QUADRATIC_LAGRANGE or uInterpolation == QUADRATIC_SIMPLEX):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
             localSolidNodes[1] = localSolidNodes[0] + numberOfSolidXNodes
             localFluidNodes[1] = localFluidNodes[0] + numberOfFluidXNodes2
-        elif (uInterpolation == CUBIC):
+        elif (uInterpolation == CUBIC_LAGRANGE or uInterpolation == CUBIC_SIMPLEX):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
             localSolidNodes[1] = localSolidNodes[0] + numberOfSolidXNodes
             localFluidNodes[1] = localFluidNodes[0] + numberOfFluidXNodes2
@@ -759,8 +902,12 @@ if (problemType == FSI):
         # Map interface xi
         for localNodeIdx in range(0,numberOfNodesXi):
             xi=float(localNodeIdx)/float(numberOfNodesXi-1)
-            solidXi = [0.0,xi]
-            fluidXi = [1.0,xi]
+            if (simplex):
+                solidXi = [xi,1.0]
+                fluidXi = [1.0,xi]
+            else:
+                solidXi = [0.0,xi]
+                fluidXi = [1.0,xi]
             interfaceNodes[localInterfaceNodes[localNodeIdx]-1]=localInterfaceNodes[localNodeIdx]
             solidNodes[localInterfaceNodes[localNodeIdx]-1]=localSolidNodes[localNodeIdx]
             fluidNodes[localInterfaceNodes[localNodeIdx]-1]=localFluidNodes[localNodeIdx]
@@ -776,8 +923,9 @@ if (problemType == FSI):
         interfaceElementNumber = interfaceElementNumber + 1
         if (debugLevel > 2):
             print('  Interface Element %8d:' % (interfaceElementNumber))        
-        solidElementNumber = interfaceElementIdx + numberOfSolidXElements*(numberOfSolidYElements-1)
-        fluidElementNumber = interfaceElementIdx + numberOfFluidX1Elements + numberOfFluidXElements2*numberOfSolidYElements
+        solidElementNumber = 1+(interfaceElementIdx-1)*numberOfSubElements + numberOfSolidXElements*numberOfSubElements*(numberOfSolidYElements-1)
+        fluidElementNumber = numberOfSubElements + (interfaceElementIdx-1)*numberOfSubElements + \
+                             (numberOfFluidX1Elements*numberOfSubElements + numberOfFluidXElements2*numberOfSolidYElements)
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
@@ -786,11 +934,11 @@ if (problemType == FSI):
         localInterfaceNodes[0] = (interfaceElementIdx-1)*(numberOfNodesXi-1) + numberOfSolidYNodes
         localSolidNodes[0] = (interfaceElementIdx-1)*(numberOfNodesXi-1) + 1 + numberOfSolidXNodes*(numberOfSolidYNodes-1)        
         localFluidNodes[0] = (interfaceElementIdx-1)*(numberOfNodesXi-1) + numberOfFluidX1Nodes + numberOfFluidXNodes2*(numberOfSolidYNodes-1)
-        if (uInterpolation == QUADRATIC):
+        if (uInterpolation == QUADRATIC_LAGRANGE or uInterpolation == QUADRATIC_SIMPLEX):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
             localSolidNodes[1] = localSolidNodes[0] + 1
             localFluidNodes[1] = localFluidNodes[0] + 1
-        elif (uInterpolation == CUBIC):
+        elif (uInterpolation == CUBIC_LAGRANGE or uInterpolation == CUBIC_SIMPLEX):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
             localSolidNodes[1] = localSolidNodes[0] + 1
             localFluidNodes[1] = localFluidNodes[0] + 1
@@ -803,8 +951,12 @@ if (problemType == FSI):
         # Map interface xi
         for localNodeIdx in range(0,numberOfNodesXi):
             xi=float(localNodeIdx)/float(numberOfNodesXi-1)
-            solidXi = [xi,1.0]
-            fluidXi = [xi,0.0]
+            if (simplex):
+                solidXi = [1.0,1.0-xi]
+                fluidXi = [xi,1.0-xi]
+            else:
+                solidXi = [xi,1.0]
+                fluidXi = [xi,0.0]
             interfaceNodes[localInterfaceNodes[localNodeIdx]-1]=localInterfaceNodes[localNodeIdx]
             solidNodes[localInterfaceNodes[localNodeIdx]-1]=localSolidNodes[localNodeIdx]
             fluidNodes[localInterfaceNodes[localNodeIdx]-1]=localFluidNodes[localNodeIdx]
@@ -824,8 +976,9 @@ if (problemType == FSI):
         interfaceElementNumber = interfaceElementNumber + 1
         if (debugLevel > 2):
             print('  Interface Element %8d:' % (interfaceElementNumber))
-        solidElementNumber = (numberOfSolidYElements - interfaceElementIdx + 1)*numberOfSolidXElements 
-        fluidElementNumber = (numberOfSolidYElements - interfaceElementIdx)*numberOfFluidXElements2 + numberOfFluidX1Elements + 1
+        solidElementNumber = (numberOfSolidYElements - interfaceElementIdx + 1)*numberOfSolidXElements*numberOfSubElements
+        fluidElementNumber = (numberOfSolidYElements - interfaceElementIdx)*numberOfFluidXElements2 + \
+                             numberOfFluidX1Elements*numberOfSubElements + 1
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
@@ -837,11 +990,11 @@ if (problemType == FSI):
                              ((numberOfSolidYElements - interfaceElementIdx + 1)*(numberOfNodesXi-1)+1)
         localFluidNodes[0] = numberOfFluidXNodes2*(numberOfSolidYElements - interfaceElementIdx + 1)*(numberOfNodesXi-1) + \
                              numberOfFluidX1Nodes + offset
-        if (uInterpolation == QUADRATIC):
+        if (uInterpolation == QUADRATIC_LAGRANGE or uInterpolation == QUADRATIC_SIMPLEX):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
             localSolidNodes[1] = localSolidNodes[0] - numberOfSolidXNodes 
             localFluidNodes[1] = localFluidNodes[0] - numberOfFluidXNodes2 - offset + 1
-        elif (uInterpolation == CUBIC):
+        elif (uInterpolation == CUBIC_LAGRANGE or uInterpolation == CUBIC_SIMPLEX):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
             localSolidNodes[1] = localSolidNodes[0] - numberOfSolidXNodes 
             localFluidNodes[1] = localFluidNodes[0] - numberOfFluidXNodes2 - offset + 1
@@ -854,8 +1007,12 @@ if (problemType == FSI):
         # Map interface xi
         for localNodeIdx in range(0,numberOfNodesXi):
             xi=float(numberOfNodesXi-localNodeIdx-1)/float(numberOfNodesXi-1)
-            solidXi = [1.0,xi]
-            fluidXi = [0.0,xi]
+            if (simplex):
+                solidXi = [1.0,xi]
+                fluidXi = [xi,1.0]
+            else:
+                solidXi = [1.0,xi]
+                fluidXi = [0.0,xi]
             interfaceNodes[localInterfaceNodes[localNodeIdx]-1]=localInterfaceNodes[localNodeIdx]
             solidNodes[localInterfaceNodes[localNodeIdx]-1]=localSolidNodes[localNodeIdx]
             fluidNodes[localInterfaceNodes[localNodeIdx]-1]=localFluidNodes[localNodeIdx]
@@ -925,7 +1082,7 @@ if (problemType != FLUID):
     solidGeometricField.MeshDecompositionSet(solidDecomposition)
     solidGeometricField.meshDecomposition = solidDecomposition
     # Set the scaling to use
-    if (uInterpolation == HERMITE):
+    if (uInterpolation == CUBIC_HERMITE):
         solidGeometricField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
     else:
         solidGeometricField.ScalingTypeSet(iron.FieldScalingTypes.NONE)
@@ -943,7 +1100,7 @@ if (problemType != SOLID):
     # Set the decomposition to use
     fluidGeometricField.MeshDecompositionSet(fluidDecomposition)
     # Set the scaling to use
-    if (uInterpolation == HERMITE):
+    if (uInterpolation == CUBIC_HERMITE):
         fluidGeometricField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
     else:
         fluidGeometricField.ScalingTypeSet(iron.FieldScalingTypes.NONE)
@@ -961,7 +1118,7 @@ if (problemType == FSI):
     # Set the decomposition to use
     interfaceGeometricField.MeshDecompositionSet(interfaceDecomposition)
     # Set the scaling to use
-    if (uInterpolation == HERMITE):
+    if (uInterpolation == CUBIC_HERMITE):
         interfaceGeometricField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
     else:
         interfaceGeometricField.ScalingTypeSet(iron.FieldScalingTypes.NONE)
@@ -1166,7 +1323,7 @@ if (problemType != FLUID):
     solidDependentField.ComponentMeshComponentSet(iron.FieldVariableTypes.DELUDELN,numberOfDimensions+1,2)
     solidDependentField.ComponentInterpolationSet(iron.FieldVariableTypes.U,numberOfDimensions+1,iron.FieldInterpolationTypes.NODE_BASED)
     solidDependentField.ComponentInterpolationSet(iron.FieldVariableTypes.DELUDELN,numberOfDimensions+1,iron.FieldInterpolationTypes.NODE_BASED)
-    if (uInterpolation == HERMITE):
+    if (uInterpolation == CUBIC_HERMITE):
         solidDependentField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
     else:
         solidDependentField.ScalingTypeSet(iron.FieldScalingTypes.NONE)
@@ -1183,7 +1340,7 @@ if (problemType != FLUID):
     solidDependentField.ParameterSetUpdateStart(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
     solidDependentField.ParameterSetUpdateFinish(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
 
-if (problemType != FLUID):
+if (problemType != SOLID):
     # Create the equations set dependent field variables for dynamic Navier-Stokes
     fluidDependentField = iron.Field()
     fluidEquationsSet.DependentCreateStart(fluidDependentFieldUserNumber,fluidDependentField)
@@ -1762,7 +1919,7 @@ if (problemType != FLUID):
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
                 print('         Displacement      = [ %.2f, %.2f ]' % (0.0,0.0))                 
-            if (uInterpolation == HERMITE):
+            if (uInterpolation == CUBIC_HERMITE):
                 fsiBoundaryConditions.AddNode(solidDependentField,iron.FieldVariableTypes.U,1, \
                                               iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1, \
                                               nodeNumber,1,iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -1811,7 +1968,7 @@ if (problemType != SOLID):
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
                 print('         Velocity         = [ %.2f, %.2f ]' % (0.0,0.0))                 
-            if (uInterpolation == HERMITE):
+            if (uInterpolation == CUBIC_HERMITE):
                 fsiBoundaryConditions.SetNode(fluidDependentField,iron.FieldVariableTypes.U,1, \
                                               iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1, \
                                               nodeNumber,1,iron.BoundaryConditionsTypes.FIXED_INLET,0.0)
@@ -1844,7 +2001,7 @@ if (problemType != SOLID):
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
                 print('         Velocity         = [ %.2f, %.2f ]' % (0.0,0.0))                 
-            if (uInterpolation == HERMITE):
+            if (uInterpolation == CUBIC_HERMITE):
                 fsiBoundaryConditions.SetNode(fluidDependentField,iron.FieldVariableTypes.U,1, \
                                               iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1, \
                                               nodeNumber,1,iron.BoundaryConditionsTypes.FIXED_INLET,0.0)
@@ -1884,7 +2041,8 @@ if (problemType != SOLID):
                 print('         Pressure         =   %.2f' % (fluidPRef))                 
         if RBS:
             # Set the element normals for outlet stabilisation
-            elementNumber = numberOfFluidX1Elements+numberOfFluidX2Elements+(yElementIdx-2)*(numberOfFluidX1Elements+numberOfFluidX2Elements)
+            elementNumber = (numberOfFluidX1Elements+numberOfFluidX2Elements)*numberOfSubElements+\
+                            (yElementIdx-2)*(numberOfFluidX1Elements+numberOfFluidX2Elements)*numberOfSubElements
             elementDomain = fluidDecomposition.ElementDomainGet(elementNumber)
             if (elementDomain == computationalNodeNumber):
                 # Set the outflow normal to (0,0,+1)
@@ -1955,7 +2113,7 @@ if (problemType != SOLID):
                                           nodeNumber,2,iron.BoundaryConditionsTypes.FIXED,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
-            if (uInterpolation == HERMITE):
+            if (uInterpolation == CUBIC_HERMITE):
                 fsiBoundaryConditions.SetNode(fluidDependentField,iron.FieldVariableTypes.U,1, \
                                               iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1, \
                                               nodeNumber,1,iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -1986,7 +2144,7 @@ if (problemType != SOLID):
                                           nodeNumber,2,iron.BoundaryConditionsTypes.FIXED,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
-            if (uInterpolation == HERMITE):
+            if (uInterpolation == CUBIC_HERMITE):
                 fsiBoundaryConditions.SetNode(fluidDependentField,iron.FieldVariableTypes.U,1, \
                                               iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1, \
                                               nodeNumber,1,iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -2022,7 +2180,7 @@ if (problemType != SOLID):
                                               iron.BoundaryConditionsTypes.FIXED,0.0)
                 if (debugLevel > 2):
                     print('      Node        %d:' % (nodeNumber1))
-                if (uInterpolation == HERMITE):    
+                if (uInterpolation == CUBIC_HERMITE):    
                     fsiBoundaryConditions.AddNode(fluidDependentField,iron.FieldVariableTypes.U,1,
                                                   iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber1,1,
                                                   iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -2050,7 +2208,7 @@ if (problemType != SOLID):
                                               iron.BoundaryConditionsTypes.FIXED,0.0)
                 if (debugLevel > 2):
                     print('      Node        %d:' % (nodeNumber2))
-                if (uInterpolation == HERMITE):    
+                if (uInterpolation == CUBIC_HERMITE):    
                     fsiBoundaryConditions.AddNode(fluidDependentField,iron.FieldVariableTypes.U,1,
                                                   iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber2,1,
                                                   iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -2082,7 +2240,7 @@ if (problemType != SOLID):
                                               iron.BoundaryConditionsTypes.FIXED,0.0)
                 if (debugLevel > 2):
                     print('      Node        %d:' % (nodeNumber))
-                if (uInterpolation == HERMITE):    
+                if (uInterpolation == CUBIC_HERMITE):    
                     fsiBoundaryConditions.AddNode(fluidDependentField,iron.FieldVariableTypes.U,1,
                                                   iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber,1,
                                                   iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -2117,7 +2275,7 @@ if (problemType != SOLID):
                                           nodeNumber,2,iron.BoundaryConditionsTypes.FIXED,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
-            if (uInterpolation == HERMITE):
+            if (uInterpolation == CUBIC_HERMITE):
                 fsiBoundaryConditions.SetNode(fluidDependentField,iron.FieldVariableTypes.U,1, \
                                               iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1, \
                                               nodeNumber,2,iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -2159,7 +2317,7 @@ if (problemType == FSI):
     if (debugLevel > 2):
         print('      Node        %d:' % (1))
         print('      Node        %d:' % (numberOfInterfaceNodes))
-    if (uInterpolation == HERMITE):
+    if (uInterpolation == CUBIC_HERMITE):
         fsiBoundaryConditions.SetNode(interfaceLagrangeField,iron.FieldVariableTypes.U,1, \
                                       iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,1,1, \
                                       iron.BoundaryConditionsTypes.FIXED,0.0)
@@ -2219,7 +2377,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.SetNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber,1,
                                                     iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
@@ -2253,7 +2411,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber1))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.SetNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber1,1,
                                                     iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
@@ -2281,7 +2439,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber2))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.SetNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber2,1,
                                                     iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
@@ -2316,7 +2474,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber1))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.SetNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber1,1,
                                                     iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
@@ -2344,7 +2502,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber2))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.SetNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber2,1,
                                                     iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
@@ -2377,7 +2535,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.SetNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber,1,
                                                     iron.BoundaryConditionsTypes.FIXED_WALL,0.0)
@@ -2413,7 +2571,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.MOVED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber1))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.AddNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber1,1,
                                                     iron.BoundaryConditionsTypes.MOVED_WALL,0.0)
@@ -2441,7 +2599,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.MOVED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber2))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.AddNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber2,1,
                                                     iron.BoundaryConditionsTypes.MOVED_WALL,0.0)
@@ -2473,7 +2631,7 @@ if (problemType == FSI):
                                                 iron.BoundaryConditionsTypes.MOVED_WALL,0.0)
             if (debugLevel > 2):
                 print('      Node        %d:' % (nodeNumber))
-            if (uInterpolation == HERMITE):    
+            if (uInterpolation == CUBIC_HERMITE):    
                 movingMeshBoundaryConditions.AddNode(movingMeshDependentField,iron.FieldVariableTypes.U,1,
                                                     iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1,nodeNumber,1,
                                                     iron.BoundaryConditionsTypes.MOVED_WALL,0.0)
