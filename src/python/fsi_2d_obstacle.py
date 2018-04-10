@@ -428,8 +428,9 @@ if not os.path.exists('./output/Interface'):
 iron.OutputSetOn("Testing")
 
 # Get the computational nodes info
-numberOfComputationalNodes = iron.ComputationalNumberOfNodesGet()
-computationalNodeNumber    = iron.ComputationalNodeNumberGet()
+computationEnvironment = iron.ComputationEnvironment()
+numberOfComputationalNodes = computationEnvironment.NumberOfWorldNodesGet()
+computationalNodeNumber = computationEnvironment.WorldNodeNumberGet()
           
 #================================================================================================================================
 #  Initial Data & Default Values
