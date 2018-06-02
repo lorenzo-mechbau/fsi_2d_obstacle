@@ -213,7 +213,9 @@ movingMeshUserNumber    = 4
 solidDecompositionUserNumber     = 1
 fluidDecompositionUserNumber     = 2
 interfaceDecompositionUserNumber = 3
-          
+
+fsiDecomposerUserNumber = 1
+
 solidGeometricFieldUserNumber     = 11
 solidFibreFieldUserNumber     = 12
 solidEquationsSetFieldUserNumber = 13
@@ -435,6 +437,9 @@ computationEnvironment = iron.ComputationEnvironment()
 iron.Context.ComputationEnvironmentGet(computationEnvironment)
 numberOfComputationalNodes = computationEnvironment.NumberOfWorldNodesGet()
 computationalNodeNumber = computationEnvironment.WorldNodeNumberGet()
+
+worldWorkGroup = iron.WorkGroup()
+computationEnvironment.WorldWorkGroupGet(worldWorkGroup)
           
 #================================================================================================================================
 #  Initial Data & Default Values
@@ -1074,6 +1079,33 @@ if (progressDiagnostics):
     print('Decomposition ... Done')
     
 #================================================================================================================================
+#  Decomposition
+#================================================================================================================================
+
+if (progressDiagnostics):
+    print('Decomposer ...')
+    
+fsiDecomposer = iron.Decomposer()
+fsiDecomposer.CreateStart(fsiDecomposerUserNumber,worldRegion,worldWorkGroup)
+
+if (problemType != FLUID):
+    # Add in solid mesh
+    solidDecompositionIndex = fsiDecomposer.DecompositionAdd(solidDecomposition)
+
+if (problemType != SOLID):
+    # Add in the fluid mesh
+    fluidDecompositionIndex = fsiDecomposer.DecompositionAdd(fluidDecomposition)
+
+if (problemType == FSI):
+    # Add in the interface mesh
+    interfaceDecompositionIndex = fsiDecomposer.DecompositionAdd(interfaceDecomposition)
+
+fsiDecomposer.CreateFinish()
+    
+if (progressDiagnostics):
+    print('Decomposer ... Done')
+    
+#================================================================================================================================
 #  Geometric Field
 #================================================================================================================================
 
@@ -1085,8 +1117,7 @@ if (problemType != FLUID):
     solidGeometricField = iron.Field()
     solidGeometricField.CreateStart(solidGeometricFieldUserNumber,solidRegion)
     # Set the decomposition to use
-    solidGeometricField.MeshDecompositionSet(solidDecomposition)
-    solidGeometricField.meshDecomposition = solidDecomposition
+    solidGeometricField.DecompositionSet(solidDecomposition)
     # Set the scaling to use
     if (uInterpolation == CUBIC_HERMITE):
         solidGeometricField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
@@ -1104,7 +1135,7 @@ if (problemType != SOLID):
     fluidGeometricField = iron.Field()
     fluidGeometricField.CreateStart(fluidGeometricFieldUserNumber,fluidRegion)
     # Set the decomposition to use
-    fluidGeometricField.MeshDecompositionSet(fluidDecomposition)
+    fluidGeometricField.DecompositionSet(fluidDecomposition)
     # Set the scaling to use
     if (uInterpolation == CUBIC_HERMITE):
         fluidGeometricField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
@@ -1122,7 +1153,7 @@ if (problemType == FSI):
     interfaceGeometricField = iron.Field()
     interfaceGeometricField.CreateStartInterface(interfaceGeometricFieldUserNumber,interface)
     # Set the decomposition to use
-    interfaceGeometricField.MeshDecompositionSet(interfaceDecomposition)
+    interfaceGeometricField.DecompositionSet(interfaceDecomposition)
     # Set the scaling to use
     if (uInterpolation == CUBIC_HERMITE):
         interfaceGeometricField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
