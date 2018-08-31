@@ -38,9 +38,9 @@ height = 1.5
 
 numberOfSolidXElements = 1
 numberOfSolidYElements = 2
-numberOfFluidX1Elements = 2
-numberOfFluidX2Elements = 4
-numberOfFluidYElements = 2
+numberOfFluidX1Elements = 1
+numberOfFluidX2Elements = 1
+numberOfFluidYElements = 1
 
 #uInterpolation = QUADRATIC_LAGRANGE
 #pInterpolation = LINEAR_LAGRANGE
@@ -304,7 +304,7 @@ def GetElementNodes2D(elementNumber,subElementNumber,localNodes2D,numberOfXNodes
             localNodes2D[4] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2 + 1
             localNodes2D[5] = localNodes2D[localNodeIdx100] + numberOfXNodes1
         else:
-	    localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 2
+            localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 2
             localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2 + 2
             localNodes2D[3] = localNodes2D[localNodeIdx100] + 1
             localNodes2D[4] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + 2
@@ -414,6 +414,13 @@ def SetNodeParameters1D(nodeNumber,field,xPosition,yPosition,xTangent,yTangent):
 import numpy,csv,time,sys,os,pdb
 from opencmiss.iron import iron
 
+# Diagnostics
+#iron.DiagnosticsSetOn(iron.DiagnosticTypes.ALL,[1,2,3,4,5],"Diagnostics",["Decomposer_GraphCalculate"])
+# Error Handling
+#iron.ErrorHandlingModeSet(iron.ErrorHandlingModes.TRAP_ERROR)
+# Output
+iron.OutputSetOn("Testing")
+
 # Ensure output directories exist
 if not os.path.exists('./output'):
     os.makedirs('./output')
@@ -427,19 +434,15 @@ if not os.path.exists('./output/Interface'):
 worldRegion = iron.Region()
 iron.Context.WorldRegionGet(worldRegion)
 
-# Diagnostics
-#iron.DiagnosticsSetOn(iron.DiagnosticTypes.ALL,[1,2,3,4,5],"Diagnostics",[""])
-#iron.ErrorHandlingModeSet(iron.ErrorHandlingModes.TRAP_ERROR)
-iron.OutputSetOn("Testing")
 
 # Get the computational nodes info
 computationEnvironment = iron.ComputationEnvironment()
 iron.Context.ComputationEnvironmentGet(computationEnvironment)
-numberOfComputationalNodes = computationEnvironment.NumberOfWorldNodesGet()
-computationalNodeNumber = computationEnvironment.WorldNodeNumberGet()
 
 worldWorkGroup = iron.WorkGroup()
 computationEnvironment.WorldWorkGroupGet(worldWorkGroup)
+numberOfComputationalNodes = worldWorkGroup.NumberOfGroupNodesGet()
+computationalNodeNumber = worldWorkGroup.GroupNodeNumberGet()
           
 #================================================================================================================================
 #  Initial Data & Default Values
@@ -1053,8 +1056,6 @@ if (problemType != FLUID):
     # Create a decomposition for the solid mesh
     solidDecomposition = iron.Decomposition()
     solidDecomposition.CreateStart(solidDecompositionUserNumber,solidMesh)
-    solidDecomposition.TypeSet(iron.DecompositionTypes.CALCULATED)
-    solidDecomposition.NumberOfDomainsSet(numberOfComputationalNodes)
     solidDecomposition.CalculateFacesSet(True)
     solidDecomposition.CreateFinish()
 
@@ -1062,8 +1063,6 @@ if (problemType != SOLID):
     # Create a decomposition for the fluid mesh
     fluidDecomposition = iron.Decomposition()
     fluidDecomposition.CreateStart(fluidDecompositionUserNumber,fluidMesh)
-    fluidDecomposition.TypeSet(iron.DecompositionTypes.CALCULATED)
-    fluidDecomposition.NumberOfDomainsSet(numberOfComputationalNodes)
     fluidDecomposition.CalculateFacesSet(True)
     fluidDecomposition.CreateFinish()
 
@@ -1071,15 +1070,13 @@ if (problemType == FSI):
     # Create a decomposition for the interface mesh
     interfaceDecomposition = iron.Decomposition()
     interfaceDecomposition.CreateStart(interfaceDecompositionUserNumber,interfaceMesh)
-    interfaceDecomposition.TypeSet(iron.DecompositionTypes.CALCULATED)
-    interfaceDecomposition.NumberOfDomainsSet(numberOfComputationalNodes)
     interfaceDecomposition.CreateFinish()
 
 if (progressDiagnostics):
     print('Decomposition ... Done')
     
 #================================================================================================================================
-#  Decomposition
+#  Decomposer
 #================================================================================================================================
 
 if (progressDiagnostics):
@@ -1099,6 +1096,8 @@ if (problemType != SOLID):
 if (problemType == FSI):
     # Add in the interface mesh
     interfaceDecompositionIndex = fsiDecomposer.DecompositionAdd(interfaceDecomposition)
+
+fsiDecomposer.OutputTypeSet(iron.DecomposerOutputTypes.ALL)    
 
 fsiDecomposer.CreateFinish()
     
@@ -1228,8 +1227,7 @@ if (problemType == FSI):
     # Left edge of interface nodes    
     for yNodeIdx in range(1,numberOfSolidYNodes):
         nodeNumber = yNodeIdx
-        #nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
-        nodeDomain = computationalNodeNumber
+        nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
         if (nodeDomain == computationalNodeNumber):
             xPosition = fluidX1Size
             yPosition = float(yNodeIdx-1)/float(numberOfSolidYNodes-1)*solidYSize
@@ -1237,8 +1235,7 @@ if (problemType == FSI):
     # Top edge of interface nodes    
     for xNodeIdx in range(1,numberOfSolidXNodes+1):
         nodeNumber = xNodeIdx+numberOfSolidYNodes-1
-        #nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
-        nodeDomain = computationalNodeNumber
+        nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
         if (nodeDomain == computationalNodeNumber):
             xPosition = fluidX1Size+float(xNodeIdx-1)/float(numberOfSolidXNodes-1)*solidXSize
             yPosition = solidYSize
@@ -1246,8 +1243,7 @@ if (problemType == FSI):
     # Right edge of interface nodes    
     for yNodeIdx in range(1,numberOfSolidYNodes):
         nodeNumber = yNodeIdx+(numberOfSolidYElements+numberOfSolidXElements)*(numberOfNodesXi-1)+1
-        #nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
-        nodeDomain = computationalNodeNumber
+        nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
         if (nodeDomain == computationalNodeNumber):
             xPosition = fluidX1Size+solidXSize
             yPosition = solidYSize-float(yNodeIdx)/float(numberOfSolidYNodes-1)*solidYSize
@@ -1273,7 +1269,7 @@ if (problemType != FLUID):
     solidEquationsSet = iron.EquationsSet()
     solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
                                       iron.EquationsSetTypes.FINITE_ELASTICITY,
-                                      iron.EquationsSetSubtypes.MOONEY_RIVLIN]
+                                      iron.EquationsSetSubtypes.DYNAMIC_MOONEY_RIVLIN]
     solidEquationsSet.CreateStart(solidEquationsSetUserNumber,solidRegion,solidGeometricField,
                                   solidEquationsSetSpecification,solidEquationsSetFieldUserNumber,
                                   solidEquationsSetField)
@@ -1440,12 +1436,11 @@ if (problemType != FLUID):
     solidMaterialsField = iron.Field()
     solidEquationsSet.MaterialsCreateStart(solidMaterialsFieldUserNumber,solidMaterialsField)
     solidMaterialsField.VariableLabelSet(iron.FieldVariableTypes.U,'SolidMaterials')
-    solidMaterialsField.VariableLabelSet(iron.FieldVariableTypes.V,'SolidDensity')
     solidEquationsSet.MaterialsCreateFinish()
     # Set Mooney-Rivlin constants c10 and c01 respectively
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,mooneyRivlin1)
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,mooneyRivlin2)
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.V,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
+    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
+    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,mooneyRivlin1)
+    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,3,mooneyRivlin2)
 
 if (problemType != SOLID):
     # Create the equations set materials field variables for dynamic Navier-Stokes
