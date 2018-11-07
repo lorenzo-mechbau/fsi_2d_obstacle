@@ -412,6 +412,12 @@ def SetNodeParameters1D(nodeNumber,field,xPosition,yPosition,xTangent,yTangent):
 import numpy,csv,time,sys,os,pdb
 from opencmiss.iron import iron
 
+# Path from command line argument or cd
+if len(sys.argv) > 1:
+    file_root_directory = sys.argv[1]
+else:
+    file_root_directory = os.path.dirname(__file__)
+
 # Ensure output directories exist
 if not os.path.exists('./output'):
     os.makedirs('./output')
@@ -427,10 +433,13 @@ if not os.path.exists('./output/Interface'):
 #iron.ErrorHandlingModeSet(iron.ErrorHandlingModes.TRAP_ERROR)
 iron.OutputSetOn("Testing")
 
-# Get the computational nodes info
-computationEnvironment = iron.ComputationEnvironment()
-numberOfComputationalNodes = computationEnvironment.NumberOfWorldNodesGet()
-computationalNodeNumber = computationEnvironment.WorldNodeNumberGet()
+# Get the number of computational nodes and this computational node number
+#computationEnvironment = iron.ComputationEnvironment()
+#numberOfComputationalNodes = computationEnvironment.NumberOfWorldNodesGet()
+#computationalNodeNumber = computationEnvironment.WorldNodeNumberGet()
+numberOfComputationalNodes = iron.ComputationalNumberOfNodesGet()
+computationalNodeNumber = iron.ComputationalNodeNumberGet()
+
           
 #================================================================================================================================
 #  Initial Data & Default Values
@@ -1513,7 +1522,8 @@ if (problemType != SOLID):
     # Create CellML equations for the temporal fluid boundary conditions
     bcCellML = iron.CellML()
     bcCellML.CreateStart(bcCellMLUserNumber,fluidRegion)
-    bcCellMLIdx = bcCellML.ModelImport("input/exponentialrampupinletbc.cellml")
+    bcCellML_fileName = os.path.join(file_root_directory, "input/exponentialrampupinletbc.cellml")
+    bcCellMLIdx = bcCellML.ModelImport(bcCellML_fileName)
     bcCellML.VariableSetAsKnown(bcCellMLIdx,"main/A")
     bcCellML.VariableSetAsKnown(bcCellMLIdx,"main/B")
     bcCellML.VariableSetAsKnown(bcCellMLIdx,"main/C")
@@ -2678,3 +2688,5 @@ print('#')
 #================================================================================================================================
 #  Finish Program
 #================================================================================================================================
+# Finalise OpenCMISS-Iron
+iron.Finalise()
